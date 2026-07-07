@@ -64,7 +64,7 @@ const runSeeder = async () => {
     await mongoose.disconnect();
     process.exit(0);
   } catch (error) {
-    console.error("❌ Seeding failed:", error);
+    console.error("Seeding failed:", error);
     process.exit(1);
   }
 };

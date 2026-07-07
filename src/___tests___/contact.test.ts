@@ -1,37 +1,110 @@
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  beforeEach,
+} from "@jest/globals";
 import request from "supertest";
+import mongoose from "mongoose";
+import { MongoMemoryServer } from "mongodb-memory-server";
 import app from "../app";
-import { describe, it, expect } from "@jest/globals";
+import Contact from "../models/Contact";
+
+let mongoServer: MongoMemoryServer;
+
+const MOCK_USER_ID = "user_12345";
+
+// 1. STARTUP: Spin up the in-memory database before any tests run
+beforeAll(async () => {
+  mongoServer = await MongoMemoryServer.create();
+  const uri = mongoServer.getUri();
+  await mongoose.connect(uri);
+});
+
+// 2. TEARDOWN: Close connections after all tests are done
+afterAll(async () => {
+  await mongoose.disconnect();
+  await mongoServer.stop();
+});
+
+// 3. ISOLATION: Clear the database before every single test so they don't affect each other
+beforeEach(async () => {
+  await Contact.deleteMany({});
+});
 
 describe("Contact API Feature Tests", () => {
-  const testContactId = "123";
-
   // Test 1: Mark a contact as favorite
   it("should mark a contact as favorite", async () => {
+    // Setup: Create a standard contact first
+    const contact = await Contact.create({
+      first_name: "John",
+      last_name: "Doe",
+      email: "john@example.com",
+      is_favorite: false,
+      user_id: MOCK_USER_ID,
+    });
+
+    // Action: Hit the endpoint
     const response = await request(app)
-      .post(`/api/contacts/${testContactId}/favorite`)
+      .patch(`/api/contacts/${contact._id}/favorite`)
       .send();
 
+    // Assertion: Check the response and the database
     expect(response.status).toBe(200);
-    expect(response.body.message).toContain("marked as favorite");
+    expect(response.body.data.is_favorite).toBe(true);
+
+    const dbContact = await Contact.findById(contact._id);
+    expect(dbContact?.is_favorite).toBe(true);
   });
 
   // Test 2: Update a personal note
   it("should update a personal note for a contact", async () => {
+    const contact = await Contact.create({
+      first_name: "Jane",
+      last_name: "Smith",
+      email: "jane@example.com",
+      user_id: MOCK_USER_ID,
+    });
+
     const notePayload = { personal_note: "Met at the global hackathon" };
 
     const response = await request(app)
-      .put(`/api/contacts/${testContactId}/note`)
+      .put(`/api/contacts/${contact._id}/note`)
       .send(notePayload);
 
     expect(response.status).toBe(200);
-    expect(response.body.note).toBe(notePayload.personal_note);
+    expect(response.body.data.personal_note).toBe(notePayload.personal_note);
   });
 
-  // Test 3: Filter contacts using favorite=1
+  // Test 3: Filter contacts returning only favorites
   it("should filter contacts returning only favorites", async () => {
+    // Setup: Create one favorite and one non-favorite
+    await Contact.insertMany([
+      {
+        first_name: "Alice",
+        last_name: "Favorite",
+        email: "alice@example.com",
+        is_favorite: true,
+        user_id: MOCK_USER_ID,
+      },
+      {
+        first_name: "Bob",
+        last_name: "Standard",
+        email: "bob@example.com",
+        is_favorite: false,
+        user_id: MOCK_USER_ID,
+      },
+    ]);
+
+    // Action: Request with the favorite filter
     const response = await request(app).get("/api/contacts?favorite=1").send();
 
+    // Assertion: Should only return Alice
     expect(response.status).toBe(200);
-    expect(response.body.filters.favorite).toBe("1");
+    expect(response.body.data.length).toBe(1);
+    expect(response.body.data[0].first_name).toBe("Alice");
+    expect(response.body.data[0].is_favorite).toBe(true);
   });
 });
