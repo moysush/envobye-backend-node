@@ -16,20 +16,20 @@ let mongoServer: MongoMemoryServer;
 
 const MOCK_USER_ID = "user_12345";
 
-// 1. STARTUP: Spin up the in-memory database before any tests run
+// spin up the in-memory database before any tests run
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   const uri = mongoServer.getUri();
   await mongoose.connect(uri);
 });
 
-// 2. TEARDOWN: Close connections after all tests are done
+// close connections after all tests are done
 afterAll(async () => {
   await mongoose.disconnect();
   await mongoServer.stop();
 });
 
-// 3. ISOLATION: Clear the database before every single test so they don't affect each other
+// clear the database before every single test
 beforeEach(async () => {
   await Contact.deleteMany({});
 });
@@ -37,7 +37,6 @@ beforeEach(async () => {
 describe("Contact API Feature Tests", () => {
   // Test 1: Mark a contact as favorite
   it("should mark a contact as favorite", async () => {
-    // Setup: Create a standard contact first
     const contact = await Contact.create({
       first_name: "John",
       last_name: "Doe",
@@ -46,12 +45,10 @@ describe("Contact API Feature Tests", () => {
       user_id: MOCK_USER_ID,
     });
 
-    // Action: Hit the endpoint
     const response = await request(app)
       .patch(`/api/contacts/${contact._id}/favorite`)
       .send();
 
-    // Assertion: Check the response and the database
     expect(response.status).toBe(200);
     expect(response.body.data.is_favorite).toBe(true);
 
@@ -80,7 +77,6 @@ describe("Contact API Feature Tests", () => {
 
   // Test 3: Filter contacts returning only favorites
   it("should filter contacts returning only favorites", async () => {
-    // Setup: Create one favorite and one non-favorite
     await Contact.insertMany([
       {
         first_name: "Alice",
@@ -98,10 +94,9 @@ describe("Contact API Feature Tests", () => {
       },
     ]);
 
-    // Action: Request with the favorite filter
     const response = await request(app).get("/api/contacts?favorite=1").send();
 
-    // Assertion: Should only return Alice
+    // should only return Alice
     expect(response.status).toBe(200);
     expect(response.body.data.length).toBe(1);
     expect(response.body.data[0].first_name).toBe("Alice");
