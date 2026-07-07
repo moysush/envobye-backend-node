@@ -1,7 +1,8 @@
 import app from "./app";
+import { config } from "./config/env";
 
-const PORT = process.env.PORT || 8080;
-
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(config.port, () => {
+  console.log(
+    `Server running in ${config.nodeEnv} mode on port ${config.port}`,
+  );
 });
