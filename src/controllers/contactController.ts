@@ -4,7 +4,7 @@ import { catchAsync } from "../utils/catchAsync";
 import { AppError } from "../utils/AppError";
 import Contact from "../models/Contact";
 
-// Simulate an authenticated user ID since we aren't building a full login system
+// simulate an authenticated user ID since we aren't building a full login system
 const MOCK_USER_ID = "user_12345";
 
 // GET /api/contacts/favorites
@@ -88,17 +88,16 @@ export const getContact = catchAsync(async (req: Request, res: Response) => {
 export const getContacts = catchAsync(async (req: Request, res: Response) => {
   const { favorite, search, page = 1, limit = 15 } = req.query;
 
-  // Build the query object dynamically
+  // build the query object dynamically
   const query: any = { user_id: MOCK_USER_ID };
 
-  // Filter by favorite=1
   if (favorite === "1") {
     query.is_favorite = true;
   }
 
-  // Search by first name, last name, or email
+  // search by first name, last name, or email
   if (search) {
-    const searchRegex = new RegExp(search as string, "i"); // Case-insensitive
+    const searchRegex = new RegExp(search as string, "i");
     query.$or = [
       { first_name: searchRegex },
       { last_name: searchRegex },
@@ -106,10 +105,10 @@ export const getContacts = catchAsync(async (req: Request, res: Response) => {
     ];
   }
 
-  // Calculate pagination
+  // calculate pagination
   const skip = (Number(page) - 1) * Number(limit);
 
-  // Execute queries
+  // execute queries
   const contacts = await Contact.find(query)
     .sort({ createdAt: -1 })
     .skip(skip)
@@ -129,7 +128,7 @@ export const getContacts = catchAsync(async (req: Request, res: Response) => {
 
 // GET /api/contacts/stats
 export const getStats = catchAsync(async (req: Request, res: Response) => {
-  // Using MongoDB Aggregation Pipeline for maximum efficiency
+  // MongoDB Aggregation Pipeline for maximum efficiency
   const stats = await Contact.aggregate([
     { $match: { user_id: MOCK_USER_ID } },
     {
